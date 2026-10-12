@@ -61,8 +61,6 @@ wget -qO- https://raw.githubusercontent.com/theodorusyoga/devstrap/main/install.
 | `spotify` | Spotify | Official snap |
 | `slack` | Slack | Official snap |
 
-**Notion** isn't included: there's no official Notion app for Linux, only community-made clients. Notion works well in Chrome, and you can install it as an app from the browser menu
-
 To add your own, put a line in `packages/ubuntu/optional-snap.txt` and use the snap name with `DEVSTRAP_OPTIONAL`
 
 ## Not included, because it's macOS only
