@@ -29,15 +29,6 @@ run() {
   fi
 }
 
-# Write a system-owned file (needs sudo)
-write_root_file() {
-  if [ "$DRY_RUN" = "1" ]; then
-    echo "      ${DIM}[dry-run] write to $1: $2${RESET}"
-  else
-    printf '%s\n' "$2" | sudo tee "$1" >/dev/null
-  fi
-}
-
 # Append a line to a user-owned file
 append_line() {
   if [ "$DRY_RUN" = "1" ]; then
@@ -115,21 +106,6 @@ else
   run wget -qO "$CHROME_DEB" https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
   run sudo apt-get install -y "$CHROME_DEB"
   rm -f "$CHROME_DEB"
-fi
-
-step "Claude Desktop (beta)"
-if apt_installed claude-desktop; then
-  ok "claude-desktop"
-else
-  installing "claude-desktop"
-  KEYRING=/usr/share/keyrings/claude-desktop-archive-keyring.asc
-  run sudo curl -fsSLo "$KEYRING" https://downloads.claude.ai/claude-desktop/key.asc
-  write_root_file /etc/apt/sources.list.d/claude-desktop.list \
-    "deb [arch=amd64,arm64 signed-by=$KEYRING] https://downloads.claude.ai/claude-desktop/apt/stable stable main"
-  # New repo added, so this refresh is always needed
-  run sudo apt-get update -y -qq
-  APT_UPDATED=1
-  run sudo apt-get install -y claude-desktop
 fi
 
 step "FVM + Flutter"

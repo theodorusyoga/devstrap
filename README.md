@@ -37,12 +37,11 @@ wget -qO- https://raw.githubusercontent.com/theodorusyoga/devstrap/main/install.
 | VS Code | snap |
 | Android Studio | snap |
 | Google Chrome | Official .deb from Google (amd64) |
-| Claude Desktop (beta) | Official Anthropic apt repository |
 | FVM + Flutter stable | Official FVM installer |
 
 Safe to run more than once. Every tool is checked first: anything already installed shows a green ✓ and is left alone, and on a fully set-up machine the script does nothing at all
 
-The script does not run a full `apt upgrade`. Keep your system updated the usual way, and Claude Desktop updates arrive with it
+The script does not run a full `apt upgrade`. Keep your system updated the usual way
 
 ## Not included, because it's macOS only
 
@@ -70,4 +69,4 @@ To add a tool, add one line to `packages/ubuntu/apt.txt` or `snap.txt`. To add a
 ## Roadmap
 
 - **macOS**: Homebrew, CocoaPods, FVM, Android Studio, Sourcetree, VS Code, Chrome, scrcpy
-- **Fedora**: notes only for now, Claude Desktop has no official Fedora build yet
+- **Fedora**
