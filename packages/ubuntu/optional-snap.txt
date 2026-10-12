@@ -1,0 +1,4 @@
+# Optional apps, installed only when chosen via DEVSTRAP_OPTIONAL
+# format: package-name [flags]
+spotify
+slack

@@ -43,6 +43,28 @@ Safe to run more than once. Every tool is checked first: anything already instal
 
 The script does not run a full `apt upgrade`. Keep your system updated the usual way
 
+## Optional apps
+
+Not installed by default. Choose them with `DEVSTRAP_OPTIONAL`:
+
+```bash
+# all optional apps
+wget -qO- https://raw.githubusercontent.com/theodorusyoga/devstrap/main/install.sh | DEVSTRAP_OPTIONAL=all bash
+
+# only some of them
+wget -qO- https://raw.githubusercontent.com/theodorusyoga/devstrap/main/install.sh | DEVSTRAP_OPTIONAL=warp,slack bash
+```
+
+| Name | App | Installed via |
+|---|---|---|
+| `warp` | Warp terminal | Official Warp apt repository (amd64) |
+| `spotify` | Spotify | Official snap |
+| `slack` | Slack | Official snap |
+
+**Notion** isn't included: there's no official Notion app for Linux, only community-made clients. Notion works well in Chrome, and you can install it as an app from the browser menu
+
+To add your own, put a line in `packages/ubuntu/optional-snap.txt` and use the snap name with `DEVSTRAP_OPTIONAL`
+
 ## Not included, because it's macOS only
 
 - **CocoaPods** and **Ruby 3.2** for CocoaPods: only needed for iOS builds, which require Xcode on a Mac

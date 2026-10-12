@@ -6,6 +6,8 @@ set -euo pipefail
 REPO_DIR="${REPO_DIR:-$(cd "$(dirname "$0")/.." && pwd)}"
 PKG_DIR="$REPO_DIR/packages/ubuntu"
 DRY_RUN="${DEVSTRAP_DRY_RUN:-0}"
+# Optional apps: empty (none), "all", or a list like "warp,slack"
+OPTIONAL="${DEVSTRAP_OPTIONAL:-}"
 
 if [ -t 1 ]; then
   GREEN=$'\033[32m'; YELLOW=$'\033[33m'; DIM=$'\033[2m'; BOLD=$'\033[1m'; RESET=$'\033[0m'
@@ -27,6 +29,35 @@ run() {
   else
     "$@"
   fi
+}
+
+# Write a system-owned file (needs sudo)
+write_root_file() {
+  if [ "$DRY_RUN" = "1" ]; then
+    echo "      ${DIM}[dry-run] write to $1: $2${RESET}"
+  else
+    printf '%s\n' "$2" | sudo tee "$1" >/dev/null
+  fi
+}
+
+# Download an ASCII signing key and store it dearmored for apt
+install_gpg_key() {
+  if [ "$DRY_RUN" = "1" ]; then
+    echo "      ${DIM}[dry-run] add signing key $1 -> $2${RESET}"
+  else
+    sudo install -d -m 755 "$(dirname "$2")"
+    wget -qO- "$1" | gpg --dearmor | sudo tee "$2" >/dev/null
+    sudo chmod 644 "$2"
+  fi
+}
+
+# True if an optional app was chosen
+want_optional() {
+  [ "$OPTIONAL" = "all" ] && return 0
+  case ",${OPTIONAL// /,}," in
+    *",$1,"*) return 0 ;;
+  esac
+  return 1
 }
 
 # Append a line to a user-owned file
@@ -142,6 +173,44 @@ else
   run fvm install stable
   run fvm global stable
   run flutter precache --android
+fi
+
+step "Optional apps"
+if [ -z "$OPTIONAL" ]; then
+  note "None chosen. Add DEVSTRAP_OPTIONAL=all, or a list like DEVSTRAP_OPTIONAL=warp,slack"
+else
+  if want_optional warp; then
+    if apt_installed warp-terminal; then
+      ok "warp-terminal"
+    elif [ "$(dpkg --print-architecture)" != "amd64" ]; then
+      note "Warp's apt repository is amd64 only, skipping"
+    else
+      installing "warp-terminal"
+      install_gpg_key https://releases.warp.dev/linux/keys/warp.asc /etc/apt/keyrings/warpdotdev.gpg
+      write_root_file /etc/apt/sources.list.d/warpdotdev.list \
+        "deb [arch=amd64 signed-by=/etc/apt/keyrings/warpdotdev.gpg] https://releases.warp.dev/linux/deb stable main"
+      # New repo added, so this refresh is always needed
+      run sudo apt-get update -y -qq
+      APT_UPDATED=1
+      run sudo apt-get install -y warp-terminal
+    fi
+  fi
+
+  if command -v snap >/dev/null 2>&1; then
+    while read -r pkg flags; do
+      [ -z "$pkg" ] && continue
+      want_optional "$pkg" || continue
+      if snap list "$pkg" >/dev/null 2>&1; then
+        ok "$pkg"
+      else
+        installing "$pkg"
+        # shellcheck disable=SC2086
+        run sudo snap install "$pkg" $flags
+      fi
+    done < <(read_list optional-snap.txt)
+  else
+    note "snap not found, skipping snap-based optional apps"
+  fi
 fi
 
 step "Git"
