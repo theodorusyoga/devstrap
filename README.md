@@ -40,7 +40,9 @@ wget -qO- https://raw.githubusercontent.com/theodorusyoga/devstrap/main/install.
 | Claude Desktop (beta) | Official Anthropic apt repository |
 | FVM + Flutter stable | Official FVM installer |
 
-Safe to run more than once. Anything already installed is skipped
+Safe to run more than once. Every tool is checked first: anything already installed shows a green ✓ and is left alone, and on a fully set-up machine the script does nothing at all
+
+The script does not run a full `apt upgrade`. Keep your system updated the usual way, and Claude Desktop updates arrive with it
 
 ## Not included, because it's macOS only
 
