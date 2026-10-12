@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Setup buat Ubuntu (ditarget ke 26.04)
+# Setup for Ubuntu (targets 26.04)
 set -euo pipefail
 
 REPO_DIR="${REPO_DIR:-$(cd "$(dirname "$0")/.." && pwd)}"
@@ -14,26 +14,26 @@ run() {
   fi
 }
 
-# Tulis file milik sistem (butuh sudo)
+# Write a system-owned file (needs sudo)
 write_root_file() {
   if [ "$DRY_RUN" = "1" ]; then
-    echo "    [dry-run] tulis ke $1: $2"
+    echo "    [dry-run] write to $1: $2"
   else
     printf '%s\n' "$2" | sudo tee "$1" >/dev/null
   fi
 }
 
-# Tambah baris ke file milik user
+# Append a line to a user-owned file
 append_line() {
   if [ "$DRY_RUN" = "1" ]; then
-    echo "    [dry-run] tambah ke $1: $2"
+    echo "    [dry-run] append to $1: $2"
   else
     printf '\n%s\n' "$2" >> "$1"
   fi
 }
 
 step() { echo; echo "==> $1"; }
-skip() { echo "    $1 udah ada, lewati"; }
+skip() { echo "    $1 already installed, skipping"; }
 
 read_list() {
   grep -Ev '^\s*(#|$)' "$PKG_DIR/$1" || true
@@ -41,26 +41,26 @@ read_list() {
 
 . /etc/os-release
 if [ "$VERSION_ID" != "26.04" ]; then
-  echo "Catatan: script ini ditarget ke Ubuntu 26.04, kamu pakai $VERSION_ID. Lanjut, tapi bisa aja ada yang beda"
+  echo "Note: this script targets Ubuntu 26.04, you are on $VERSION_ID. Continuing, but some steps may differ"
 fi
 
 if [ "$DRY_RUN" = "1" ]; then
-  echo "Mode dry-run: cuma nampilin apa yang bakal dijalanin, gak ada yang diinstall"
+  echo "Dry-run mode: showing what would run, nothing gets installed"
 fi
 
-step "Update sistem"
+step "System update"
 run sudo apt-get update -y
 run sudo apt-get upgrade -y
 
-step "Paket apt"
+step "apt packages"
 mapfile -t APT_PKGS < <(read_list apt.txt)
 if [ "${#APT_PKGS[@]}" -gt 0 ]; then
   run sudo apt-get install -y "${APT_PKGS[@]}"
 fi
 
-step "Paket snap (VS Code, Android Studio)"
+step "snap packages (VS Code, Android Studio)"
 if ! command -v snap >/dev/null 2>&1; then
-  echo "    snap gak ketemu, lewati bagian ini"
+  echo "    snap not found, skipping this section"
 else
   while read -r pkg flags; do
     [ -z "$pkg" ] && continue
@@ -77,7 +77,7 @@ step "Google Chrome"
 if dpkg -s google-chrome-stable >/dev/null 2>&1; then
   skip "google-chrome-stable"
 elif [ "$(dpkg --print-architecture)" != "amd64" ]; then
-  echo "    Chrome buat Linux cuma ada versi amd64, lewati"
+  echo "    Chrome for Linux is amd64 only, skipping"
 else
   CHROME_DEB="$(mktemp --suffix=.deb)"
   run wget -qO "$CHROME_DEB" https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
@@ -114,7 +114,7 @@ PATH_LINE="export PATH=\"$FVM_BIN:$FLUTTER_BIN:\$PATH\""
 for rc in "$HOME/.bashrc" "$HOME/.zshrc"; do
   [ -f "$rc" ] || continue
   if grep -qF "$PATH_MARKER" "$rc"; then
-    skip "PATH fvm di $(basename "$rc")"
+    skip "fvm PATH in $(basename "$rc")"
   else
     append_line "$rc" "$PATH_MARKER"$'\n'"$PATH_LINE"
   fi
@@ -129,6 +129,6 @@ step "Git"
 run git config --global init.defaultBranch main
 
 echo
-echo "==> Selesai"
-echo "    Tutup terus buka lagi terminal-nya biar fvm dan flutter kebaca"
-echo "    Habis itu buka Android Studio sekali buat download Android SDK, terus jalanin: flutter doctor"
+echo "==> Done"
+echo "    Close and reopen your terminal so fvm and flutter are on PATH"
+echo "    Then open Android Studio once to download the Android SDK, and run: flutter doctor"

@@ -1,2 +1,2 @@
-# Script bash harus LF, CRLF dari Windows bikin error "bad interpreter"
+# Bash scripts must use LF; CRLF from Windows causes "bad interpreter" errors
 * text=auto eol=lf

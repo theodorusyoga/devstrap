@@ -1,4 +1,4 @@
-# Dasar
+# Basics
 ca-certificates
 curl
 wget
@@ -8,8 +8,8 @@ zip
 xz-utils
 gnupg
 
-# Dibutuhin Flutter di Linux
+# Required by Flutter on Linux
 libglu1-mesa
 
-# Mirror layar HP Android ke laptop
+# Mirror an Android phone screen to the laptop
 scrcpy
