@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# devstrap: set up a dev machine in one command
+# devstrap: set up a new machine in one command
 # Usage:
 #   wget -qO- https://raw.githubusercontent.com/theodorusyoga/devstrap/main/install.sh | bash
 set -euo pipefail

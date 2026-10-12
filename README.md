@@ -1,6 +1,6 @@
 # devstrap
 
-Set up a Flutter dev machine in one command. The repo stores a list of the tools you need, and the script works out how to install them on whichever OS you're on
+Set up a new machine in one command. The repo stores a list of the tools you need, and the script works out how to install them on whichever OS you're on
 
 Currently supports **Ubuntu 26.04**. More operating systems to come
 
