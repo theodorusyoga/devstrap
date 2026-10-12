@@ -63,13 +63,6 @@ wget -qO- https://raw.githubusercontent.com/theodorusyoga/devstrap/main/install.
 
 To add your own, put a line in `packages/ubuntu/optional-snap.txt` and use the snap name with `DEVSTRAP_OPTIONAL`
 
-## Not included, because it's macOS only
-
-- **CocoaPods** and **Ruby 3.2** for CocoaPods: only needed for iOS builds, which require Xcode on a Mac
-- **`flutter precache --ios`**: same reason, replaced with `--android`
-- **Sourcetree**: no Linux version
-- **Homebrew**: it does run on Linux, but every tool above is already available through apt and snap, so a second package manager isn't needed
-
 ## After installing
 
 1. Close and reopen your terminal so `fvm` and `flutter` are on your PATH
