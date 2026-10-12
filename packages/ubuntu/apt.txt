@@ -1,0 +1,15 @@
+# Dasar
+ca-certificates
+curl
+wget
+git
+unzip
+zip
+xz-utils
+gnupg
+
+# Dibutuhin Flutter di Linux
+libglu1-mesa
+
+# Mirror layar HP Android ke laptop
+scrcpy

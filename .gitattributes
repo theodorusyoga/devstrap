@@ -1,0 +1,2 @@
+# Script bash harus LF, CRLF dari Windows bikin error "bad interpreter"
+* text=auto eol=lf
