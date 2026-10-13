@@ -35,22 +35,29 @@ Dry run checks installed tools and shows what would run. It still downloads and 
 | Tools | Source |
 | --- | --- |
 | ca-certificates, curl, wget, git, unzip, zip, xz-utils, gnupg | apt |
-| libglu1-mesa, scrcpy | apt |
-| VS Code, Android Studio | Snap |
+| scrcpy | apt |
+| GitHub CLI (`gh`), GitLab CLI (`glab`) | Ubuntu apt packages |
+| clang, cmake, ninja-build, pkg-config, libgtk-3-dev, libstdc++-12-dev, libglu1-mesa | apt; Flutter Linux build tools |
+| QEMU/KVM, cpu-checker, libvirt + bridge-utils | apt; amd64 only |
+| Google Cloud CLI (`gcloud`) | Google apt repository |
+| VS Code, Android Studio, ONLYOFFICE Desktop Editors | Snap |
 | Google Chrome | Google's `.deb` download; the script installs it only on amd64 |
 | FVM | FVM installer |
-| Flutter stable + Android artifacts | FVM + `flutter precache --android` |
+| Flutter stable + Android/Linux artifacts | FVM + `flutter precache --android --linux` |
 
 The script also:
 
 - Adds FVM + Flutter to PATH in existing `.bashrc` and `.zshrc` files.
-- Sets Git's global `init.defaultBranch` to `main`, replacing an existing value if needed.
+- Sets Git's global `init.defaultBranch` to `main` only if no value is configured.
+- Adds your user to the `kvm` group on amd64. Log out and back in to apply it.
 
 If `snap` is missing, the script skips Snap apps.
 
 Reruns skip tools that pass the installed checks. Existing tools stay on their current versions. The script does not run a full `apt upgrade`.
 
-If `~/fvm/default/bin/flutter` is already executable, setup skips the Flutter install, global version selection, and Android precache steps.
+If `~/fvm/default/bin/flutter` is already executable, setup keeps that global SDK. Otherwise, it installs and selects stable. Every run checks Android + Linux artifacts with `flutter precache`, so a failed download can be retried.
+
+The apt package lists need Ubuntu's Universe repository enabled. GitHub + GitLab CLI use Ubuntu's packaged versions.
 
 ## Choose optional apps
 
@@ -76,9 +83,20 @@ Optional apps are off by default. Unknown names are ignored, so check for typos.
 
 ## Finish setup
 
-1. Reopen your terminal to load the PATH changes.
+1. Log out and back in to load the PATH changes + KVM group access.
 2. Open Android Studio to download the Android SDK.
 3. Run `flutter doctor` and follow the remaining setup steps.
+4. On amd64, run `kvm-ok`. Enable hardware virtualization in BIOS/UEFI if needed.
+
+Sign in to the services you use:
+
+```bash
+gh auth login
+glab auth login
+gcloud init
+```
+
+Setup installs the CLIs but does not sign in or choose a Google Cloud project.
 
 If neither `.bashrc` nor `.zshrc` existed during setup, add `~/fvm/bin` + `~/fvm/default/bin` to your shell's PATH yourself. Do the same if you use another shell.
 
@@ -108,7 +126,7 @@ packages/ubuntu/snap.txt            Default Snap packages and flags
 packages/ubuntu/optional-snap.txt   Optional Snap packages and flags
 ```
 
-Add one package per line to the matching list. Snap entries accept flags, like `code --classic`. Blank lines and full-line comments are ignored. End each entry with a newline.
+Add one package per line to the matching list. Snap entries accept flags, like `code --classic`. Blank lines and full-line comments are ignored. Entries without a final newline are supported. Missing or unreadable lists stop setup before any changes.
 
 For an optional Snap app, add it to `optional-snap.txt` and use its package name in `DEVSTRAP_OPTIONAL`. Put custom install steps in the OS script.
 
@@ -119,6 +137,14 @@ Running `bash install.sh` from a checkout still downloads an archive. To preview
 ```bash
 DEVSTRAP_DRY_RUN=1 bash os/ubuntu.sh
 ```
+
+## Install references
+
+- [GitHub CLI package](https://packages.ubuntu.com/resolute/gh) + [GitLab CLI package](https://packages.ubuntu.com/resolute/glab)
+- [Google Cloud CLI](https://docs.cloud.google.com/sdk/docs/install-sdk)
+- [ONLYOFFICE Snap](https://helpcenter.onlyoffice.com/desktop/installation/desktop-install-snap.aspx)
+- [Ubuntu QEMU/KVM](https://ubuntu.com/server/docs/how-to/virtualisation/qemu/)
+- [Flutter Linux setup](https://docs.flutter.dev/platform-integration/linux/setup)
 
 ## Roadmap
 

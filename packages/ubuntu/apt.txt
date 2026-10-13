@@ -8,8 +8,18 @@ zip
 xz-utils
 gnupg
 
-# Required by Flutter on Linux
+# GitHub + GitLab CLI (Ubuntu packages)
+gh
+glab
+
+# Flutter Linux desktop build tools
 libglu1-mesa
+clang
+cmake
+ninja-build
+pkg-config
+libgtk-3-dev
+libstdc++-12-dev
 
 # Mirror an Android phone screen to the laptop
 scrcpy

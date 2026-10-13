@@ -82,8 +82,18 @@ apt_installed() {
 }
 
 read_list() {
-  grep -Ev '^\s*(#|$)' "$PKG_DIR/$1" || true
+  if [ ! -f "$PKG_DIR/$1" ] || [ ! -r "$PKG_DIR/$1" ]; then
+    echo "Cannot read package list: $PKG_DIR/$1" >&2
+    return 1
+  fi
+  awk 'NF && $1 !~ /^#/' "$PKG_DIR/$1"
 }
+
+# Read every list before making changes. Assignments propagate read failures;
+# awk also keeps a final entry that has no trailing newline.
+APT_LIST="$(read_list apt.txt)"
+SNAP_LIST="$(read_list snap.txt)"
+OPTIONAL_SNAP_LIST="$(read_list optional-snap.txt)"
 
 . /etc/os-release
 if [ "$VERSION_ID" != "26.04" ]; then
@@ -103,10 +113,52 @@ while read -r pkg; do
     installing "$pkg"
     MISSING_APT+=("$pkg")
   fi
-done < <(read_list apt.txt)
+done <<< "$APT_LIST"
 if [ "${#MISSING_APT[@]}" -gt 0 ]; then
   apt_update_once
   run sudo apt-get install -y "${MISSING_APT[@]}"
+fi
+
+step "KVM"
+if [ "$(dpkg --print-architecture)" != "amd64" ]; then
+  note "KVM setup currently targets amd64, skipping"
+else
+  MISSING_KVM=()
+  for pkg in qemu-system-x86 cpu-checker libvirt-daemon-system libvirt-clients bridge-utils; do
+    if apt_installed "$pkg"; then
+      ok "$pkg"
+    else
+      installing "$pkg"
+      MISSING_KVM+=("$pkg")
+    fi
+  done
+  if [ "${#MISSING_KVM[@]}" -gt 0 ]; then
+    apt_update_once
+    run sudo apt-get install -y "${MISSING_KVM[@]}"
+  fi
+  CURRENT_USER="$(id -un)"
+  if [[ " $(id -nG "$CURRENT_USER") " == *" kvm "* ]]; then
+    ok "KVM group membership"
+  else
+    installing "KVM group membership"
+    run sudo usermod -aG kvm "$CURRENT_USER"
+    note "Log out and back in to apply KVM group access"
+  fi
+  note "Run kvm-ok after setup; hardware virtualization must be enabled in BIOS/UEFI"
+fi
+
+step "Google Cloud CLI"
+if command -v gcloud >/dev/null 2>&1 || apt_installed google-cloud-cli; then
+  ok "google-cloud-cli"
+else
+  installing "google-cloud-cli"
+  install_gpg_key https://packages.cloud.google.com/apt/doc/apt-key.gpg /etc/apt/keyrings/cloud.google.gpg
+  write_root_file /etc/apt/sources.list.d/google-cloud-sdk.list \
+    "deb [signed-by=/etc/apt/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt cloud-sdk main"
+  # Refresh again because this repository was not available to earlier steps.
+  run sudo apt-get update -y -qq
+  APT_UPDATED=1
+  run sudo apt-get install -y google-cloud-cli
 fi
 
 step "snap packages"
@@ -122,7 +174,7 @@ else
       # shellcheck disable=SC2086
       run sudo snap install "$pkg" $flags
     fi
-  done < <(read_list snap.txt)
+  done <<< "$SNAP_LIST"
 fi
 
 step "Google Chrome"
@@ -172,8 +224,11 @@ else
   installing "flutter stable"
   run fvm install stable
   run fvm global stable
-  run flutter precache --android
 fi
+# Flutter tracks cached artifacts itself. Retry this even when a previous run
+# selected the SDK successfully but failed while downloading artifacts.
+note "Check Flutter Android + Linux artifacts (keep the current global SDK)"
+run flutter precache --android --linux
 
 step "Optional apps"
 if [ -z "$OPTIONAL" ]; then
@@ -207,15 +262,15 @@ else
         # shellcheck disable=SC2086
         run sudo snap install "$pkg" $flags
       fi
-    done < <(read_list optional-snap.txt)
+    done <<< "$OPTIONAL_SNAP_LIST"
   else
     note "snap not found, skipping snap-based optional apps"
   fi
 fi
 
 step "Git"
-if [ "$(git config --global init.defaultBranch 2>/dev/null || true)" = "main" ]; then
-  ok "default branch set to main"
+if DEFAULT_BRANCH="$(git config --global --get init.defaultBranch)"; then
+  ok "default branch set to $DEFAULT_BRANCH"
 else
   installing "default branch setting"
   run git config --global init.defaultBranch main
