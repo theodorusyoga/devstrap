@@ -1,85 +1,126 @@
 # devstrap
 
-Set up a new machine in one command. The repo stores a list of the tools you need, and the script works out how to install them on whichever OS you're on
+Set up your dev tools in one command. Keep the package lists here and let the script handle setup.
 
-Currently supports **Ubuntu 26.04**. More operating systems to come
+The script targets **Ubuntu 26.04**. On other Ubuntu versions, it warns and continues. macOS + Fedora are planned.
 
-## Usage
+## Install
 
-A fresh Ubuntu install doesn't ship with `curl`, so use `wget`:
+Run as your regular user. You need `wget` or `curl` to start. The script asks for your sudo password when needed.
+
+Read [install.sh](install.sh) + [os/ubuntu.sh](os/ubuntu.sh) first. These commands download and run code from this repo. Setup also downloads and runs the FVM installer.
+
+With `wget`:
 
 ```bash
 wget -qO- https://raw.githubusercontent.com/theodorusyoga/devstrap/main/install.sh | bash
 ```
 
-If you already have `curl`:
+With `curl`:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/theodorusyoga/devstrap/main/install.sh | bash
 ```
 
-Don't prefix it with `sudo`. The script asks for your password when it needs it
-
-**Read the script before running it.** The commands above download a script from the internet and run it immediately. That's normal for a repo you trust, but check what it does first
-
-### Preview without installing anything
+### Preview changes
 
 ```bash
 wget -qO- https://raw.githubusercontent.com/theodorusyoga/devstrap/main/install.sh | DEVSTRAP_DRY_RUN=1 bash
 ```
 
-## What gets installed on Ubuntu
+Dry run checks installed tools and shows what would run. It still downloads and extracts the repo and may create temp files. It skips installs + config writes.
 
-| Tool | Installed via |
-|---|---|
-| git, curl, wget, unzip, zip, xz-utils | apt |
-| scrcpy | apt |
-| VS Code | snap |
-| Android Studio | snap |
-| Google Chrome | Official .deb from Google (amd64) |
-| FVM + Flutter stable | Official FVM installer |
+## What it sets up
 
-Safe to run more than once. Every tool is checked first: anything already installed shows a green ✓ and is left alone, and on a fully set-up machine the script does nothing at all
+| Tools | Source |
+| --- | --- |
+| ca-certificates, curl, wget, git, unzip, zip, xz-utils, gnupg | apt |
+| libglu1-mesa, scrcpy | apt |
+| VS Code, Android Studio | Snap |
+| Google Chrome | Google's `.deb` download; the script installs it only on amd64 |
+| FVM | FVM installer |
+| Flutter stable + Android artifacts | FVM + `flutter precache --android` |
 
-The script does not run a full `apt upgrade`. Keep your system updated the usual way
+The script also:
 
-## Optional apps
+- Adds FVM + Flutter to PATH in existing `.bashrc` and `.zshrc` files.
+- Sets Git's global `init.defaultBranch` to `main`, replacing an existing value if needed.
 
-Not installed by default. Choose them with `DEVSTRAP_OPTIONAL`:
+If `snap` is missing, the script skips Snap apps.
+
+Reruns skip tools that pass the installed checks. Existing tools stay on their current versions. The script does not run a full `apt upgrade`.
+
+If `~/fvm/default/bin/flutter` is already executable, setup skips the Flutter install, global version selection, and Android precache steps.
+
+## Choose optional apps
+
+Install all optional apps:
 
 ```bash
-# all optional apps
 wget -qO- https://raw.githubusercontent.com/theodorusyoga/devstrap/main/install.sh | DEVSTRAP_OPTIONAL=all bash
+```
 
-# only some of them
+Or pick the apps you need:
+
+```bash
 wget -qO- https://raw.githubusercontent.com/theodorusyoga/devstrap/main/install.sh | DEVSTRAP_OPTIONAL=warp,slack bash
 ```
 
-| Name | App | Installed via |
-|---|---|---|
-| `warp` | Warp terminal | Official Warp apt repository (amd64) |
-| `spotify` | Spotify | Official snap |
-| `slack` | Slack | Official snap |
+| Name | App | Source |
+| --- | --- | --- |
+| `warp` | Warp terminal | Warp apt repository; the script installs it only on amd64 |
+| `spotify` | Spotify | Snap |
+| `slack` | Slack | Snap |
 
-To add your own, put a line in `packages/ubuntu/optional-snap.txt` and use the snap name with `DEVSTRAP_OPTIONAL`
+Optional apps are off by default. Unknown names are ignored, so check for typos.
 
-## After installing
+## Finish setup
 
-1. Close and reopen your terminal so `fvm` and `flutter` are on your PATH
-2. Open Android Studio once to download the Android SDK
-3. Run `flutter doctor`
+1. Reopen your terminal to load the PATH changes.
+2. Open Android Studio to download the Android SDK.
+3. Run `flutter doctor` and follow the remaining setup steps.
 
-## Structure
+If neither `.bashrc` nor `.zshrc` existed during setup, add `~/fvm/bin` + `~/fvm/default/bin` to your shell's PATH yourself. Do the same if you use another shell.
 
+## Configure a run
+
+Set these variables on the `bash` side of the pipe, as shown above.
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `DEVSTRAP_DRY_RUN` | `0` | Set to `1` to preview changes |
+| `DEVSTRAP_OPTIONAL` | Empty | Use `all` or a comma-separated list of optional apps |
+| `DEVSTRAP_REPO` | `theodorusyoga/devstrap` | Choose the GitHub `owner/repo` to fetch |
+| `DEVSTRAP_BRANCH` | `main` | Choose the branch archive to fetch |
+| `DEVSTRAP_TARBALL` | Unset | Use a local repo archive instead of downloading one |
+
+`DEVSTRAP_REPO` and `DEVSTRAP_BRANCH` choose which archive the launcher downloads. To change the launcher too, update the URL in the command.
+
+A local tarball needs one top-level repo directory containing `os/` + `packages/`. Installing tools still needs network access.
+
+## Change the setup
+
+```text
+install.sh                         Detect the OS, fetch the repo, run its setup script
+os/ubuntu.sh                       Install tools and configure Ubuntu
+packages/ubuntu/apt.txt             Default apt packages
+packages/ubuntu/snap.txt            Default Snap packages and flags
+packages/ubuntu/optional-snap.txt   Optional Snap packages and flags
 ```
-install.sh              detects the OS, fetches the repo, hands off to the matching OS script
-os/ubuntu.sh            how to install on Ubuntu
-packages/ubuntu/        apt and snap package lists
-```
 
-To add a tool, add one line to `packages/ubuntu/apt.txt` or `snap.txt`. To add an OS, create `os/<id>.sh`, where `<id>` matches `ID` in `/etc/os-release`
+Add one package per line to the matching list. Snap entries accept flags, like `code --classic`. Blank lines and full-line comments are ignored. End each entry with a newline.
+
+For an optional Snap app, add it to `optional-snap.txt` and use its package name in `DEVSTRAP_OPTIONAL`. Put custom install steps in the OS script.
+
+To add a Linux distro, create `os/<id>.sh` using its `ID` from `/etc/os-release`. macOS maps to `os/macos.sh`. The launcher passes the extracted repo path as `REPO_DIR`.
+
+Running `bash install.sh` from a checkout still downloads an archive. To preview your local Ubuntu script + package changes, run:
+
+```bash
+DEVSTRAP_DRY_RUN=1 bash os/ubuntu.sh
+```
 
 ## Roadmap
 
-- **macOS**: Homebrew, CocoaPods, FVM, Android Studio, Sourcetree, VS Code, Chrome, scrcpy
-- **Fedora**
+- Add macOS support with Homebrew, CocoaPods, FVM, Android Studio, Sourcetree, VS Code, Chrome, and scrcpy.
+- Add Fedora support.
