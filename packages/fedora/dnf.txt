@@ -1,0 +1,32 @@
+# Basics (curl-minimal on Fedora already provides curl)
+ca-certificates
+wget
+git
+unzip
+zip
+xz
+gnupg2
+
+# GitHub + GitLab CLI
+gh
+glab
+
+# Flutter Linux desktop build tools
+clang
+cmake
+ninja-build
+pkgconf-pkg-config
+gtk3-devel
+libstdc++-devel
+mesa-libGLU
+
+# Snap desktop apps + COPR support
+snapd
+dnf5-plugins
+
+# Google Cloud CLI runtime compatibility
+libxcrypt-compat
+
+# KVM for Android Emulator
+qemu-kvm
+libvirt-client

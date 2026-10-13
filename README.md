@@ -2,13 +2,13 @@
 
 Set up your dev tools in one command. Keep the package lists here and let the script handle setup.
 
-The script targets **Ubuntu 26.04**. On other Ubuntu versions, it warns and continues. macOS + Fedora are planned.
+Supports **Ubuntu 26.04** + **standard Fedora on x86_64 with DNF5**. Other Ubuntu versions show a warning and continue. Fedora Atomic variants, including Silverblue and Kinoite, are not supported. macOS is planned.
 
 ## Install
 
 Run as your regular user. You need `wget` or `curl` to start. The script asks for your sudo password when needed.
 
-Read [install.sh](install.sh) + [os/ubuntu.sh](os/ubuntu.sh) first. These commands download and run code from this repo. Setup also downloads and runs the FVM installer.
+Read [install.sh](install.sh) + the matching [Ubuntu](os/ubuntu.sh) or [Fedora](os/fedora.sh) script first. These commands download and run code from this repo. Setup also downloads and runs the FVM installer.
 
 With `wget`:
 
@@ -32,6 +32,8 @@ Dry run checks installed tools and shows what would run. It still downloads and 
 
 ## What it sets up
 
+### Ubuntu
+
 | Tools | Source |
 | --- | --- |
 | ca-certificates, curl, wget, git, unzip, zip, xz-utils, gnupg | apt |
@@ -45,19 +47,39 @@ Dry run checks installed tools and shows what would run. It still downloads and 
 | FVM | FVM installer |
 | Flutter stable + Android/Linux artifacts | FVM + `flutter precache --android --linux` |
 
-The script also:
+### Fedora
+
+| Tools | Source |
+| --- | --- |
+| git, wget, unzip, zip, xz, gnupg2, ca-certificates | DNF; an existing curl or curl-minimal is reused |
+| GitHub CLI (`gh`), GitLab CLI (`glab`) | Fedora DNF packages |
+| clang, cmake, ninja-build, pkgconf-pkg-config, gtk3-devel, libstdc++-devel, mesa-libGLU | DNF; Flutter Linux build tools |
+| QEMU/KVM + libvirt-client | DNF |
+| scrcpy | `zeno/scrcpy` COPR, linked by scrcpy upstream |
+| Google Cloud CLI (`gcloud`) | Google RPM repository + libxcrypt-compat |
+| Google Chrome | Google RPM repository |
+| VS Code, Android Studio, ONLYOFFICE Desktop Editors | Snap |
+| FVM + Flutter | Same setup as Ubuntu |
+
+Setup installs snapd + the DNF5 COPR plugin. It enables `snapd.socket` and creates `/snap` as a link to `/var/lib/snapd/snap` for classic Snaps. Log out and back in when setup finishes.
+
+Fedora support has automated tests with fake package managers. A full install on a fresh Fedora machine is still unverified.
+
+### Shared behavior
+
+Both scripts:
 
 - Adds FVM + Flutter to PATH in existing `.bashrc` and `.zshrc` files.
 - Sets Git's global `init.defaultBranch` to `main` only if no value is configured.
 - Adds your user to the `kvm` group on amd64. Log out and back in to apply it.
 
-If `snap` is missing, the script skips Snap apps.
+On Ubuntu, missing `snap` skips Snap apps. Fedora installs and starts Snap before installing apps.
 
-Reruns skip tools that pass the installed checks. Existing tools stay on their current versions. The script does not run a full `apt upgrade`.
+Reruns skip tools that pass the installed checks. Existing tools stay on their current versions. Neither script runs a full system upgrade.
 
 If `~/fvm/default/bin/flutter` is already executable, setup keeps that global SDK. Otherwise, it installs and selects stable. Every run checks Android + Linux artifacts with `flutter precache`, so a failed download can be retried.
 
-The apt package lists need Ubuntu's Universe repository enabled. GitHub + GitLab CLI use Ubuntu's packaged versions.
+Ubuntu's apt lists need Universe enabled. GitHub + GitLab CLI use each distro's packaged versions.
 
 ## Choose optional apps
 
@@ -75,7 +97,7 @@ wget -qO- https://raw.githubusercontent.com/theodorusyoga/devstrap/main/install.
 
 | Name | App | Source |
 | --- | --- | --- |
-| `warp` | Warp terminal | Warp apt repository; the script installs it only on amd64 |
+| `warp` | Warp terminal | Warp apt repository on Ubuntu amd64; Warp RPM repository on Fedora x86_64 |
 | `spotify` | Spotify | Snap |
 | `slack` | Slack | Snap |
 
@@ -86,7 +108,7 @@ Optional apps are off by default. Unknown names are ignored, so check for typos.
 1. Log out and back in to load the PATH changes + KVM group access.
 2. Open Android Studio to download the Android SDK.
 3. Run `flutter doctor` and follow the remaining setup steps.
-4. On amd64, run `kvm-ok`. Enable hardware virtualization in BIOS/UEFI if needed.
+4. Check KVM with `kvm-ok` on Ubuntu amd64 or `virt-host-validate qemu` on Fedora. Enable hardware virtualization in BIOS/UEFI if needed. Fedora's check also reports requirements for other VM features; focus on KVM support + access for the Android Emulator.
 
 Sign in to the services you use:
 
@@ -121,21 +143,33 @@ A local tarball needs one top-level repo directory containing `os/` + `packages/
 ```text
 install.sh                         Detect the OS, fetch the repo, run its setup script
 os/ubuntu.sh                       Install tools and configure Ubuntu
+os/fedora.sh                       Install tools and configure Fedora
 packages/ubuntu/apt.txt             Default apt packages
 packages/ubuntu/snap.txt            Default Snap packages and flags
 packages/ubuntu/optional-snap.txt   Optional Snap packages and flags
+packages/fedora/dnf.txt             Default Fedora packages
+packages/fedora/snap.txt            Fedora Snap packages and flags
+packages/fedora/optional-snap.txt   Optional Fedora Snap packages and flags
 ```
 
 Add one package per line to the matching list. Snap entries accept flags, like `code --classic`. Blank lines and full-line comments are ignored. Entries without a final newline are supported. Missing or unreadable lists stop setup before any changes.
 
-For an optional Snap app, add it to `optional-snap.txt` and use its package name in `DEVSTRAP_OPTIONAL`. Put custom install steps in the OS script.
+For an optional Snap app, add it to the distro's `optional-snap.txt` and use its package name in `DEVSTRAP_OPTIONAL`. Put custom install steps in the OS script.
 
 To add a Linux distro, create `os/<id>.sh` using its `ID` from `/etc/os-release`. macOS maps to `os/macos.sh`. The launcher passes the extracted repo path as `REPO_DIR`.
 
-Running `bash install.sh` from a checkout still downloads an archive. To preview your local Ubuntu script + package changes, run:
+Running `bash install.sh` from a checkout still downloads an archive. To preview local changes, run the script for your distro:
 
 ```bash
 DEVSTRAP_DRY_RUN=1 bash os/ubuntu.sh
+# Or, on Fedora:
+DEVSTRAP_DRY_RUN=1 bash os/fedora.sh
+```
+
+Run the isolated installer tests with:
+
+```bash
+python3 -B -m unittest discover -s tests -v
 ```
 
 ## Install references
@@ -144,9 +178,11 @@ DEVSTRAP_DRY_RUN=1 bash os/ubuntu.sh
 - [Google Cloud CLI](https://docs.cloud.google.com/sdk/docs/install-sdk)
 - [ONLYOFFICE Snap](https://helpcenter.onlyoffice.com/desktop/installation/desktop-install-snap.aspx)
 - [Ubuntu QEMU/KVM](https://ubuntu.com/server/docs/how-to/virtualisation/qemu/)
+- [Fedora Snap setup](https://snapcraft.io/docs/tutorials/install-the-daemon/fedora/)
+- [scrcpy Fedora setup](https://github.com/Genymobile/scrcpy/blob/master/doc/linux.md)
+- [Warp RPM setup](https://docs.warp.dev/getting-started/quickstart/installation-and-setup)
 - [Flutter Linux setup](https://docs.flutter.dev/platform-integration/linux/setup)
 
 ## Roadmap
 
 - Add macOS support with Homebrew, CocoaPods, FVM, Android Studio, Sourcetree, VS Code, Chrome, and scrcpy.
-- Add Fedora support.

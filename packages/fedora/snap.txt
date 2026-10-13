@@ -1,0 +1,4 @@
+# format: package-name [flags]
+code --classic
+android-studio --classic
+onlyoffice-desktopeditors
